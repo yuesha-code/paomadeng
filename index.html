@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LED跑马灯</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(135deg, #f0f7ff 0%, #e6f2ff 50%, #d9e8ff 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      color: #1a73e8;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .header h1 {
+      font-size: 2.5rem;
+      text-shadow: 0 2px 4px rgba(26, 115, 232, 0.1);
+    }
+    
+    .header p {
+      color: #5f6368;
+      margin-top: 10px;
+    }
+    
+    .marquee-container {
+      position: relative;
+      width: 100%;
+      height: 120px;
+      background-color: rgba(0, 0, 0, 0.9);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    
+    .marquee {
+      position: absolute;
+      white-space: nowrap;
+      will-change: transform;
+      display: flex;
+      align-items: center;
+      height: 100%;
+      /* 添加硬件加速 */
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+    }
+    
+    .led-char {
+      display: inline-block;
+      margin: 0 2px;
+      /* 添加硬件加速 */
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+    }
+    
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      background-color: rgba(255, 255, 255, 0.8);
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    
+    .control-group {
+      background-color: rgba(255, 255, 255, 0.9);
+      padding: 15px;
+      border-radius: 8px;
+      transition: background-color 0.3s, transform 0.2s;
+      border: 1px solid #e0e0e0;
+    }
+    
+    .control-group:hover {
+      background-color: rgba(245, 245, 245, 0.9);
+      transform: translateY(-2px);
+    }
+    
+    .control-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    
+    .input-group {
+      margin-bottom: 15px;
+    }
+    
+    input[type="text"],
+    input[type="range"],
+    select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #d0d0d0;
+      border-radius: 5px;
+      background-color: white;
+      color: #333;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    
+    input[type="text"]:focus,
+    input[type="range"]:focus,
+    select:focus {
+      border-color: #1a73e8;
+    }
+    
+    input[type="color"] {
+      width: 100%;
+      height: 40px;
+      border: 1px solid #d0d0d0;
+      background: white;
+      cursor: pointer;
+      border-radius: 5px;
+      padding: 2px;
+    }
+    
+    /* 修复Safari浏览器中颜色选择器的问题 */
+    input[type="color"]::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+    
+    input[type="color"]::-webkit-color-swatch {
+      border: none;
+      border-radius: 3px;
+    }
+    
+    .range-value {
+      display: inline-block;
+      width: 40px;
+      text-align: right;
+    }
+    
+    .btn-container {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    
+    button {
+      padding: 10px 20px;
+      background-color: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.2s;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(26, 115, 232, 0.2);
+    }
+    
+    button:hover {
+      background-color: #0d47a1;
+    }
+    
+    button:active {
+      transform: scale(0.98);
+    }
+    
+    .fullscreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: black;
+      /* 添加硬件加速 */
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+    }
+    
+    .fullscreen .marquee-container {
+      width: 100%;
+      height: 100%;
+      border-radius: 0;
+      box-shadow: none;
+      background-color: black;
+      /* 添加硬件加速 */
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+    }
+    
+    .fullscreen .marquee {
+      justify-content: center;
+    }
+    
+    .fullscreen-close {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1001;
+      background-color: rgba(255, 255, 255, 0.8);
+      padding: 10px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.2s;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .fullscreen-close:hover {
+      background-color: rgba(240, 240, 240, 0.9);
+      transform: scale(1.05);
+    }
+    
+    .mobile-tip {
+      background-color: #e6f7ff;
+      border-left: 4px solid #1890ff;
+      padding: 10px 15px;
+      border-radius: 4px;
+      margin: 10px 0;
+      font-size: 14px;
+      color: #0050b3;
+    }
+    
+    .line-controls {
+      margin-top: 10px;
+    }
+    
+    .line-control {
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .line-control input {
+      flex: 1;
+    }
+    
+    .add-line-btn {
+      background-color: #52c41a;
+      margin-top: 10px;
+    }
+    
+    .add-line-btn:hover {
+      background-color: #389e0d;
+    }
+    
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+      .controls {
+        grid-template-columns: 1fr;
+      }
+      
+      .header h1 {
+        font-size: 2rem;
+      }
+      
+      .marquee-container {
+        height: 100px;
+      }
+      
+      .mobile-tip {
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>LED跑马灯</h1>
+      <p>自定义您的LED显示效果</p>
+    </div>
+    
+    <div class="marquee-container" id="marqueeContainer">
+      <div class="marquee" id="marquee">欢迎使用LED跑马灯</div>
+    </div>
+    
+    <div class="controls">
+      <div class="control-group">
+        <label for="textColor">字体颜色</label>
+        <input type="color" id="textColor" value="#1a73e8">
+      </div>
+      
+      <div class="control-group">
+        <label for="bgColor">背景颜色</label>
+        <input type="color" id="bgColor" value="#000000">
+      </div>
+      
+      <div class="control-group">
+        <label for="rainbowEffect">彩虹效果</label>
+        <select id="rainbowEffect">
+          <option value="none">无</option>
+          <option value="static">静态彩虹</option>
+          <option value="dynamic">动态彩虹</option>
+        </select>
+      </div>
+      
+      <div class="control-group">
+        <label for="fontEffect">字体效果</label>
+        <select id="fontEffect">
+          <option value="none">无</option>
+          <option value="pulse">脉冲</option>
+          <option value="glow">发光</option>
+          <option value="neon">霓虹灯</option>
+        </select>
+      </div>
+      
+      <div class="control-group">
+        <label for="fontSpacing">字体间距</label>
+        <input type="range" id="fontSpacing" min="0" max="10" value="2">
+        <span class="range-value" id="fontSpacingValue">2</span>
+      </div>
+      
+      <div class="control-group">
+        <label for="scrollSpeed">滚动速度</label>
+        <input type="range" id="scrollSpeed" min="1" max="20" value="5">
+        <span class="range-value" id="scrollSpeedValue">5</span>
+      </div>
+      
+      <div class="control-group">
+        <label for="fontWeight">字体粗细</label>
+        <select id="fontWeight">
+          <option value="normal">正常</option>
+          <option value="bold">粗体</option>
+          <option value="bolder">更粗</option>
+          <option value="lighter">更细</option>
+        </select>
+      </div>
+      
+      <div class="control-group">
+        <label for="fontSize">字体大小</label>
+        <input type="range" id="fontSize" min="12" max="100" value="40">
+        <span class="range-value" id="fontSizeValue">40</span>
+      </div>
+      
+      <div class="control-group" style="grid-column: 1 / -1;">
+        <div class="mobile-tip">
+          <p>提示：手机横屏需要打开自动旋转后旋转手机即可显示</p>
+        </div>
+      </div>
+      
+      <div class="control-group" style="grid-column: 1 / -1;">
+        <label>多行文字设置</label>
+        <div class="line-controls" id="lineControls">
+          <div class="line-control">
+            <input type="text" class="line-text" placeholder="请输入第1行文字" value="欢迎使用LED跑马灯">
+            <button type="button" class="remove-line-btn" style="display: none;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18 6L6 18" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+                <path d="M6 6L18 18" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <button type="button" id="addLineBtn" class="add-line-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 5V19" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+            <path d="M5 12H19" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          添加一行
+        </button>
+      </div>
+    </div>
+    
+    <div class="btn-container">
+      <button id="fullscreenBtn">全屏显示</button>
+    </div>
+  </div>
+  
+  <div id="fullscreenMode" class="fullscreen" style="display: none;">
+    <div class="marquee-container" id="fullscreenMarqueeContainer">
+      <div class="marquee" id="fullscreenMarquee">欢迎使用LED跑马灯</div>
+    </div>
+    <div class="fullscreen-close" id="closeFullscreen">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18 6L6 18" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+        <path d="M6 6L18 18" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+  </div>
+
+  <script>
+    // 获取DOM元素
+    const textColor = document.getElementById('textColor');
+    const bgColor = document.getElementById('bgColor');
+    const rainbowEffect = document.getElementById('rainbowEffect');
+    const fontEffect = document.getElementById('fontEffect');
+    const fontSpacing = document.getElementById('fontSpacing');
+    const fontSpacingValue = document.getElementById('fontSpacingValue');
+    const scrollSpeed = document.getElementById('scrollSpeed');
+    const scrollSpeedValue = document.getElementById('scrollSpeedValue');
+    const fontWeight = document.getElementById('fontWeight');
+    const fontSize = document.getElementById('fontSize');
+    const fontSizeValue = document.getElementById('fontSizeValue');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const fullscreenMode = document.getElementById('fullscreenMode');
+    const closeFullscreen = document.getElementById('closeFullscreen');
+    const marquee = document.getElementById('marquee');
+    const marqueeContainer = document.getElementById('marqueeContainer');
+    const fullscreenMarquee = document.getElementById('fullscreenMarquee');
+    const fullscreenMarqueeContainer = document.getElementById('fullscreenMarqueeContainer');
+    const lineControls = document.getElementById('lineControls');
+    const addLineBtn = document.getElementById('addLineBtn');
+    
+    // 配置对象
+    const config = {
+      textColor: '#1a73e8',
+      bgColor: '#000000',
+      rainbowEffect: 'none',
+      fontEffect: 'none',
+      fontSpacing: 2,
+      scrollSpeed: 5,
+      fontWeight: 'normal',
+      fontSize: 40,
+      lineTexts: ['欢迎使用LED跑马灯'] // 默认一行文字
+    };
+    
+    // 更新配置
+    function updateConfig() {
+      config.textColor = textColor.value;
+      config.bgColor = bgColor.value;
+      config.rainbowEffect = rainbowEffect.value;
+      config.fontEffect = fontEffect.value;
+      config.fontSpacing = parseInt(fontSpacing.value);
+      config.scrollSpeed = parseInt(scrollSpeed.value);
+      config.fontWeight = fontWeight.value;
+      config.fontSize = parseInt(fontSize.value);
+      
+      // 更新配置中的行文本
+      const lineInputs = document.querySelectorAll('.line-text');
+      config.lineTexts = Array.from(lineInputs).map(input => input.value || '');
+      
+      // 更新显示值
+      fontSpacingValue.textContent = config.fontSpacing;
+      scrollSpeedValue.textContent = config.scrollSpeed;
+      fontSizeValue.textContent = config.fontSize;
+      
+      // 应用配置
+      applyConfig();
+    }
+    
+    // 应用配置到跑马灯
+    function applyConfig() {
+      // 更新普通模式
+      updateMarqueeText(marquee, config.lineTexts);
+      marquee.style.color = config.textColor;
+      marquee.style.fontSize = `${config.fontSize}px`;
+      marquee.style.fontWeight = config.fontWeight;
+      marqueeContainer.style.backgroundColor = config.bgColor;
+      
+      // 更新全屏模式
+      updateMarqueeText(fullscreenMarquee, config.lineTexts);
+      fullscreenMarquee.style.color = config.textColor;
+      fullscreenMarquee.style.fontSize = `${config.fontSize}px`;
+      fullscreenMarquee.style.fontWeight = config.fontWeight;
+      fullscreenMarqueeContainer.style.backgroundColor = config.bgColor;
+      
+      // 应用字体效果
+      applyFontEffect();
+      
+      // 应用彩虹效果
+      applyRainbowEffect();
+      
+      // 重新开始动画
+      restartAnimation();
+    }
+    
+    // 更新跑马灯文本，添加字体字符容器
+    function updateMarqueeText(element, lineTexts) {
+      element.innerHTML = '';
+      
+      // 创建多行文本容器
+      const linesContainer = document.createElement('div');
+      linesContainer.style.display = 'flex';
+      linesContainer.style.flexDirection = 'column';
+      linesContainer.style.gap = `${config.fontSize / 2}px`;
+      
+      // 为每一行创建一个marquee-line
+      lineTexts.forEach(lineText => {
+        if (lineText.trim() === '') return;
+        
+        const line = document.createElement('div');
+        line.className = 'marquee-line';
+        line.style.whiteSpace = 'nowrap';
+        
+        for (let i = 0; i < lineText.length; i++) {
+          const charSpan = document.createElement('span');
+          charSpan.className = 'led-char';
+          charSpan.textContent = lineText[i];
+          charSpan.style.margin = `0 ${config.fontSpacing}px`;
+          line.appendChild(charSpan);
+        }
+        
+        linesContainer.appendChild(line);
+      });
+      
+      element.appendChild(linesContainer);
+    }
+    
+    // 应用字体效果
+    function applyFontEffect() {
+      const ledChars = document.querySelectorAll('.led-char');
+      const fullscreenLedChars = document.querySelectorAll('#fullscreenMarquee .led-char');
+      
+      // 清除所有效果
+      ledChars.forEach(char => {
+        char.style.animation = '';
+        char.style.textShadow = '';
+        char.style.padding = '';
+        char.style.borderRadius = '';
+      });
+      
+      fullscreenLedChars.forEach(char => {
+        char.style.animation = '';
+        char.style.textShadow = '';
+        char.style.padding = '';
+        char.style.borderRadius = '';
+      });
+      
+      if (config.fontEffect === 'pulse') {
+        const pulseAnimation = `
+          @keyframes pulse {
+            0% { 
+              transform: scale(0.95);
+              text-shadow: 0 0 5px ${config.textColor};
+            }
+            100% { 
+              transform: scale(1.05);
+              text-shadow: 0 0 15px ${config.textColor};
+            }
+          }
+        `;
+        
+        const style = document.createElement('style');
+        style.textContent = pulseAnimation;
+        document.head.appendChild(style);
+        
+        ledChars.forEach(char => {
+          char.style.animation = `pulse 0.5s infinite alternate`;
+        });
+        
+        fullscreenLedChars.forEach(char => {
+          char.style.animation = `pulse 0.5s infinite alternate`;
+        });
+      } else if (config.fontEffect === 'glow') {
+        ledChars.forEach(char => {
+          char.style.textShadow = `0 0 10px ${config.textColor}`;
+        });
+        
+        fullscreenLedChars.forEach(char => {
+          char.style.textShadow = `0 0 10px ${config.textColor}`;
+        });
+      } else if (config.fontEffect === 'neon') {
+        ledChars.forEach(char => {
+          char.style.textShadow = `0 0 5px ${config.textColor}, 0 0 10px ${config.textColor}`;
+          char.style.padding = `0 1px`;
+          char.style.borderRadius = '2px';
+        });
+        
+        fullscreenLedChars.forEach(char => {
+          char.style.textShadow = `0 0 5px ${config.textColor}, 0 0 10px ${config.textColor}`;
+          char.style.padding = `0 1px`;
+          char.style.borderRadius = '2px';
+        });
+      }
+    }
+    
+    // 应用彩虹效果
+    function applyRainbowEffect() {
+      const ledChars = document.querySelectorAll('.led-char');
+      const fullscreenLedChars = document.querySelectorAll('#fullscreenMarquee .led-char');
+      
+      // 清除所有彩虹效果
+      ledChars.forEach(char => {
+        char.style.background = 'none';
+        char.style.webkitBackgroundClip = 'text';
+        char.style.color = config.textColor;
+        char.style.animation = '';
+      });
+      
+      fullscreenLedChars.forEach(char => {
+        char.style.background = 'none';
+        char.style.webkitBackgroundClip = 'text';
+        char.style.color = config.textColor;
+        char.style.animation = '';
+      });
+      
+      if (config.rainbowEffect === 'static') {
+        const colors = ['#ff0000', '#ff7f00', '#ffff00', '#00ff00', '#0000ff', '#4b0082', '#9400d3'];
+        
+        ledChars.forEach((char, index) => {
+          const colorIndex = index % colors.length;
+          char.style.color = colors[colorIndex];
+        });
+        
+        fullscreenLedChars.forEach((char, index) => {
+          const colorIndex = index % colors.length;
+          char.style.color = colors[colorIndex];
+        });
+      } else if (config.rainbowEffect === 'dynamic') {
+        const rainbowAnimation = `
+          @keyframes rainbow {
+            0% { color: #ff0000; }
+            14% { color: #ff7f00; }
+            28% { color: #ffff00; }
+            42% { color: #00ff00; }
+            57% { color: #0000ff; }
+            71% { color: #4b0082; }
+            85% { color: #9400d3; }
+            100% { color: #ff0000; }
+          }
+        `;
+        
+        const style = document.createElement('style');
+        style.textContent = rainbowAnimation;
+        document.head.appendChild(style);
+        
+        ledChars.forEach((char, index) => {
+          char.style.animation = `rainbow 7s linear infinite`;
+          char.style.animationDelay = `${index * 0.1}s`;
+        });
+        
+        fullscreenLedChars.forEach((char, index) => {
+          char.style.animation = `rainbow 7s linear infinite`;
+          char.style.animationDelay = `${index * 0.1}s`;
+        });
+      }
+    }
+    
+    // 重新开始动画
+    function restartAnimation() {
+      // 普通模式动画
+      marquee.style.animation = 'none';
+      marquee.offsetHeight; // 触发重绘
+      // 调整动画持续时间，在Safari中使用更长的动画时间可能更流畅
+      const animationDuration = Math.max(30 / config.scrollSpeed, 5);
+      marquee.style.animation = `scroll ${animationDuration}s linear infinite`;
+      
+      // 全屏模式动画
+      fullscreenMarquee.style.animation = 'none';
+      fullscreenMarquee.offsetHeight; // 触发重绘
+      fullscreenMarquee.style.animation = `scroll ${animationDuration}s linear infinite`;
+    }
+    
+    // 全屏模式切换
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        // 进入全屏模式前，检查是否为Safari浏览器
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        
+        // 对于Safari浏览器，优化全屏体验
+        if (isSafari) {
+          // 临时禁用某些复杂效果
+          const originalRainbowEffect = config.rainbowEffect;
+          const originalFontEffect = config.fontEffect;
+          
+          // 保存原始配置
+          fullscreenMode.dataset.originalRainbowEffect = originalRainbowEffect;
+          fullscreenMode.dataset.originalFontEffect = originalFontEffect;
+          
+          // 在Safari全屏模式下默认使用静态彩虹效果，禁用脉冲效果
+          if (originalRainbowEffect === 'dynamic') {
+            config.rainbowEffect = 'static';
+            rainbowEffect.value = 'static';
+          }
+          
+          if (originalFontEffect === 'pulse') {
+            config.fontEffect = 'glow';
+            fontEffect.value = 'glow';
+          }
+          
+          // 应用优化后的配置
+          applyConfig();
+        }
+        
+        // 进入全屏模式
+        if (fullscreenMarqueeContainer.requestFullscreen) {
+          fullscreenMarqueeContainer.requestFullscreen();
+        } else if (fullscreenMarqueeContainer.webkitRequestFullscreen) { /* Safari */
+          fullscreenMarqueeContainer.webkitRequestFullscreen();
+        } else if (fullscreenMarqueeContainer.msRequestFullscreen) { /* IE11 */
+          fullscreenMarqueeContainer.msRequestFullscreen();
+        }
+        
+        // 显示全屏内容
+        fullscreenMode.style.display = 'flex';
+      } else {
+        // 退出全屏模式
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) { /* Safari */
+          document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) { /* IE11 */
+          document.msExitFullscreen();
+        }
+        
+        // 隐藏全屏内容
+        fullscreenMode.style.display = 'none';
+        
+        // 检查是否为Safari浏览器
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        if (isSafari) {
+          // 恢复原始配置
+          config.rainbowEffect = fullscreenMode.dataset.originalRainbowEffect || 'none';
+          config.fontEffect = fullscreenMode.dataset.originalFontEffect || 'none';
+          
+          rainbowEffect.value = config.rainbowEffect;
+          fontEffect.value = config.fontEffect;
+          
+          // 应用原始配置
+          applyConfig();
+        }
+      }
+    }
+    
+    // 监听全屏状态变化
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('msfullscreenchange', handleFullscreenChange);
+    
+    function handleFullscreenChange() {
+      <!-- 此处为原代码第709行到第741行 -->
+        if (!document.fullscreenElement && fullscreenMode.style.display === 'flex') {
+          fullscreenMode.style.display = 'none';
+          
+          // 检查是否为Safari浏览器
+          const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+          if (isSafari) {
+            // 恢复原始配置
+            config.rainbowEffect = fullscreenMode.dataset.originalRainbowEffect || 'none';
+            config.fontEffect = fullscreenMode.dataset.originalFontEffect || 'none';
+            
+            rainbowEffect.value = config.rainbowEffect;
+            fontEffect.value = config.fontEffect;
+            
+            // 应用原始配置
+            applyConfig();
+          }
+        }
+      }
+      
+      // 添加新的文本行
+      function addNewLine() {
+        const lineCount = document.querySelectorAll('.line-control').length;
+        const newLine = document.createElement('div');
+        newLine.className = 'line-control';
+        newLine.innerHTML = `
+          <input type="text" class="line-text" placeholder="请输入第${lineCount + 1}行文字">
+          <button type="button" class="remove-line-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M18 6L6 18" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+              <path d="M6 6L18 18" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        `;
+        
+        lineControls.appendChild(newLine);
+        
+        // 为新添加的输入框添加事件监听
+        const newInput = newLine.querySelector('.line-text');
+        newInput.addEventListener('input', updateConfig);
+        
+        // 为删除按钮添加事件监听
+        const removeBtn = newLine.querySelector('.remove-line-btn');
+        removeBtn.addEventListener('click', () => {
+          lineControls.removeChild(newLine);
+          updateConfig();
+        });
+        
+        // 更新第一行的删除按钮状态
+        updateFirstLineRemoveButton();
+      }
+      
+      // 更新第一行的删除按钮状态
+      function updateFirstLineRemoveButton() {
+        const lineControls = document.querySelectorAll('.line-control');
+        if (lineControls.length > 1) {
+          lineControls[0].querySelector('.remove-line-btn').style.display = 'block';
+        } else {
+          lineControls[0].querySelector('.remove-line-btn').style.display = 'none';
+        }
+      }
+      
+      // 添加事件监听器
+      textColor.addEventListener('input', updateConfig);
+      bgColor.addEventListener('input', updateConfig);
+      rainbowEffect.addEventListener('change', updateConfig);
+      fontEffect.addEventListener('change', updateConfig);
+      fontSpacing.addEventListener('input', updateConfig);
+      scrollSpeed.addEventListener('input', updateConfig);
+      fontWeight.addEventListener('change', updateConfig);
+      fontSize.addEventListener('input', updateConfig);
+      fullscreenBtn.addEventListener('click', toggleFullscreen);
+      closeFullscreen.addEventListener('click', toggleFullscreen);
+      addLineBtn.addEventListener('click', addNewLine);
+      
+      // 为所有文本输入框添加事件监听
+      document.querySelectorAll('.line-text').forEach(input => {
+        input.addEventListener('input', updateConfig);
+      });
+      
+      // 为所有删除按钮添加事件监听
+      document.querySelectorAll('.remove-line-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const lineControl = this.parentElement;
+          lineControls.removeChild(lineControl);
+          updateConfig();
+          updateFirstLineRemoveButton();
+        });
+      });
+      
+      // 初始化
+      updateConfig();
+      
+      // 添加动画样式
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes scroll {
+          0% { transform: translateX(100%); }
+          100% { transform: translateX(-100%); }
+        }
+        
+        @keyframes pulse {
+          0% { 
+            transform: scale(0.95);
+            text-shadow: 0 0 5px ${config.textColor};
+          }
+          100% { 
+            transform: scale(1.05);
+            text-shadow: 0 0 15px ${config.textColor};
+          }
+        }
+        
+        @keyframes rainbow {
+          0% { color: #ff0000; }
+          14% { color: #ff7f00; }
+          28% { color: #ffff00; }
+          42% { color: #00ff00; }
+          57% { color: #0000ff; }
+          71% { color: #4b0082; }
+          85% { color: #9400d3; }
+          100% { color: #ff0000; }
+        }
+      `;
+      document.head.appendChild(style);
+    </script>
+  </body>
+</html>
+    
